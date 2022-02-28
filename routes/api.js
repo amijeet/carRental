@@ -4,6 +4,7 @@ const router = express.Router();
 const Car = require("../models/car");
 const Booking = require("../models/booking");
 const res = require("express/lib/response");
+const mongoose = require("mongoose");
 
 // get all the cars that are avilable with their dates booked
 router.get("/getCars", function (req, res, next) {
@@ -90,25 +91,85 @@ router.delete("/returnCar/:bookingID", function (req, res, next) {
 });
 
 // generateFine api generates fine and gives it to the user
-router.get("/generateFine/:bookingID/:currDate", function (req, res, next) {
-    var currDate,
-        returnDate,
-        fine,
-        totalFine = 0;
-    Booking.findOne({ _id: req.params.bookingID }).then(function (booking) {
-        Car.findOne({ _id: booking.carID }).then(function (car) {
-            currDate = Date.parse(req.params.currDate) / 1000 / 3600 / 24;
-            returnDate = Date.parse(booking.bookingDates[1]) / 1000 / 3600 / 24;
-            fine = car.fine;
-            if (currDate > returnDate) {
-                totalFine = fine * (currDate - returnDate);
-            }
-            console.log(totalFine);
-            // res.send(totalFine);
-        });
-        console.log("totalFine is " + totalFine);
-        // res.send(totalFine);
-    });
+// router.get("/generateFine/:bookingID/:currDate", function (req, res, next) {
+//     var currDate,
+//         returnDate,
+//         fine,
+//         totalFine = 0;
+//     Booking.findOne({ _id: req.params.bookingID }).then(function (booking) {
+//         lookup;
+//         // Car.findOne({ _id: booking.carID }).then(function (car) {
+//         //     currDate = Date.parse(req.params.currDate) / 1000 / 3600 / 24;
+//         //     returnDate = Date.parse(booking.bookingDates[1]) / 1000 / 3600 / 24;
+//         //     fine = car.fine;
+//         //     if (currDate > returnDate) {
+//         //         totalFine = fine * (currDate - returnDate);
+//         //     }
+//         //     console.log(totalFine);
+//         //     // res.send(totalFine);
+//         // });
+//         // console.log("totalFine is " + totalFine);
+//         // // res.send(totalFine);
+//     });
+// });
+
+router.get("/generateFine/:bookingID/:currDate", async function (req, res, next) {
+    const currDate = new Date(req.params.currDate);
+    const [{ totalFine }] = await Booking.aggregate([
+        { $match: { _id: mongoose.Types.ObjectId(req.params.bookingID) } },
+        {
+            $lookup: {
+                from: "cars", // or from: Car.collection.name
+                let: { carId: { $toObjectId: "$carID" } }, // convert the carID string field to ObjectId for the match to work correctly
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: { $eq: ["$_id", "$$carId"] },
+                        },
+                    },
+                ],
+                as: "car",
+            },
+        },
+        {
+            $addFields: {
+                car: { $arrayElemAt: ["$car", 0] }, // get the car document from the array returned above
+                returnDate: {
+                    $toDate: { $arrayElemAt: ["$bookingDates", 1] },
+                },
+            },
+        },
+        // compute the overdue days
+        {
+            $addFields: {
+                overdueDays: {
+                    $trunc: {
+                        $ceil: {
+                            $abs: {
+                                $sum: {
+                                    $divide: [{ $subtract: [currDate, "$returnDate"] }, 60 * 1000 * 60 * 24],
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        {
+            $project: {
+                // project a new field
+                totalFine: {
+                    $cond: [
+                        { $gt: [currDate, "$returnDate"] }, // IF current date is greater than return date
+                        { $multiply: ["$car.fine", "$overdueDays"] }, // THEN multiply car fine with the overdue days
+                        0, // ELSE total fine is 0
+                    ],
+                },
+            },
+        },
+    ]).exec();
+
+    res.send({ totalFine: totalFine });
 });
 
 module.exports = router;
