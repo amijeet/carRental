@@ -73,7 +73,7 @@ router.put("/reserveCar/:id/:startDate/:endDate", function (req, res, next) {
 });
 
 // cancel a reservation
-router.delete("/cancelReservation/:bookingID", function (req, res, next) {
+router.delete("/returnCar/:bookingID", function (req, res, next) {
     Booking.findOneAndRemove({ _id: req.params.bookingID }).then(function (booking) {
         var varBooking = booking.bookingDates;
         Car.updateOne(
