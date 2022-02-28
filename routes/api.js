@@ -8,9 +8,11 @@ const mongoose = require("mongoose");
 
 // get all the cars that are avilable with their dates booked
 router.get("/getCars", function (req, res, next) {
-    Car.find({}).then(function (car) {
-        res.send(car);
-    });
+    Car.find({})
+        .then(function (car) {
+            res.send(car);
+        })
+        .catch(next);
 });
 
 // add a car to the database
@@ -89,29 +91,6 @@ router.delete("/returnCar/:bookingID", function (req, res, next) {
         });
     });
 });
-
-// generateFine api generates fine and gives it to the user
-// router.get("/generateFine/:bookingID/:currDate", function (req, res, next) {
-//     var currDate,
-//         returnDate,
-//         fine,
-//         totalFine = 0;
-//     Booking.findOne({ _id: req.params.bookingID }).then(function (booking) {
-//         lookup;
-//         // Car.findOne({ _id: booking.carID }).then(function (car) {
-//         //     currDate = Date.parse(req.params.currDate) / 1000 / 3600 / 24;
-//         //     returnDate = Date.parse(booking.bookingDates[1]) / 1000 / 3600 / 24;
-//         //     fine = car.fine;
-//         //     if (currDate > returnDate) {
-//         //         totalFine = fine * (currDate - returnDate);
-//         //     }
-//         //     console.log(totalFine);
-//         //     // res.send(totalFine);
-//         // });
-//         // console.log("totalFine is " + totalFine);
-//         // // res.send(totalFine);
-//     });
-// });
 
 router.get("/generateFine/:bookingID/:currDate", async function (req, res, next) {
     const currDate = new Date(req.params.currDate);
