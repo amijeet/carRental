@@ -9,9 +9,6 @@ const res = require("express/lib/response");
 router.get("/getCars", function (req, res, next) {
     Car.find({}).then(function (car) {
         res.send(car);
-        // car.forEach((element) => {
-        //     console.log(element.name + " " + element.id);
-        // });
     });
 });
 
@@ -34,7 +31,6 @@ router.delete("/deleteCar/:id", function (req, res, next) {
 // ALL THE APIs THAT ARE REQUIRED
 
 // book a car from the database using the name. It would return just one available car in the date requested
-// TILL NOW: would take the name of the car as input and send the date
 router.get("/bookCar/:carName/:startDate/:endDate", function (req, res, next) {
     Car.find({ name: req.params.carName })
         .then(function (cars) {
@@ -92,17 +88,18 @@ router.delete("/cancelReservation/:bookingID", function (req, res, next) {
         });
     });
 });
-var currDate, returnDate, fine, totalFine = 0;
+
 // generateFine api generates fine and gives it to the user
 router.get("/generateFine/:bookingID/:currDate", function (req, res, next) {
-    // var currDate, returnDate, fine, totalFine = 0;
+    var currDate,
+        returnDate,
+        fine,
+        totalFine = 0;
     Booking.findOne({ _id: req.params.bookingID }).then(function (booking) {
-        // var currDate, returnDate, fine, totalFine = 0;
         Car.findOne({ _id: booking.carID }).then(function (car) {
             currDate = Date.parse(req.params.currDate) / 1000 / 3600 / 24;
             returnDate = Date.parse(booking.bookingDates[1]) / 1000 / 3600 / 24;
             fine = car.fine;
-            // totalFine;
             if (currDate > returnDate) {
                 totalFine = fine * (currDate - returnDate);
             }
